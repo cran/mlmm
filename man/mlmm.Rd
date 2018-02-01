@@ -8,7 +8,7 @@ mlmm(formula_completed, formula_missing, formula_subject, pdata,
   respond_dep_missing = TRUE, pidname, sidname, iterno = 100, chains = 3,
   pathname, thin = 1, seed = 125, algorithm = "NUTS",
   warmup = floor(iterno/2), adapt_delta_value = 0.85, savefile = TRUE,
-  usefit = T, stanfit)
+  usefit = TRUE)
 }
 \arguments{
 \item{formula_completed}{The main regression model formula. It has the same formula format as lmr() and it is used to define the first level response and its explanatory variables.}
@@ -44,8 +44,6 @@ mlmm(formula_completed, formula_missing, formula_subject, pdata,
 \item{savefile}{A logical variable to indicate if the sampling files are to be saved.}
 
 \item{usefit}{A logical variable to indicate if the model use the existing fit.}
-
-\item{stanfit}{The name of the fitted stan model read from .rds fle.}
 }
 \value{
 Return of the function is the result fitted by stan(). It will have the summarized parameters from all chains and summary results for each chain.Plot() function will return the visualization of the mean and parameters.
@@ -54,7 +52,7 @@ Return of the function is the result fitted by stan(). It will have the summariz
 mlmm function handles Bayesian multilevel model with responses that is not-missing-at-random. It is motivated from analysing mass spectrometry data with respondent dependant non-missing-at-random missingness, and when there are known covariates associating with the missingness.
 }
 \examples{
-\dontrun{
+#\dontrun{
 library(MASS)
 set.seed(150)
 var2=abs(rnorm(1000,0,1));treatment=c(rep(0,500),rep(1,500))
@@ -76,10 +74,10 @@ formula_completed=var1~var2+treatment
 formula_missing=miss~var2
 formula_censor=censor~1
 formula_subject=~treatment
-pathdir=getwd()
+pathdir=tempdir()
 
 model3=mlmm(formula_completed=var1~var2+treatment,formula_missing=miss~var2,
 formula_subject=~treatment,pdata=pdata,respond_dep_missing=TRUE,
-pidname="geneid",sidname="sid",pathname=pathdir,iterno=5,chains=1,savefile=FALSE)
-}
+pidname="geneid",sidname="sid",pathname=pathdir,iterno=10,chains=2,usefit=TRUE,savefile=FALSE)
+#}
 }

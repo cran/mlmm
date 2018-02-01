@@ -9,7 +9,7 @@ mlmc(formula_completed, formula_missing, formula_censor = NULL,
   response_censorlim = NULL, pidname, sidname, iterno = 100, chains = 3,
   pathname, thin = 1, seed = 125, algorithm = "NUTS",
   warmup = floor(iterno/2), adapt_delta_value = 0.85, savefile = TRUE,
-  usefit = T, stanfit)
+  usefit = TRUE)
 }
 \arguments{
 \item{formula_completed}{The main regression model formula; It has the same formula format as lmr() and it is used to define the first level response and its explanatory variables.}
@@ -49,8 +49,6 @@ mlmc(formula_completed, formula_missing, formula_censor = NULL,
 \item{savefile}{A logical variable to indicate if the sampling files are to be saved.}
 
 \item{usefit}{A logical variable to indicate if the model use the existing fit.}
-
-\item{stanfit}{The name of the fitted stan model read from .rds fle.}
 }
 \value{
 Return of the function is the result fitted by stan. It will have the summarized parameters from all chains and summary results for each chain.
@@ -76,14 +74,14 @@ testfun=function()
  for ( i in 1:50) {if (miss[i]==1) var1[i]=NA;
  if (censor[i]==1) var1[i]=0.05}
  pdata=data.frame(var1,var2,miss,censor,geneid,sid)
- pathdir=getwd()
- if (R.Version()$arch=="i386") fp=system.file("chunks","mlmc_i32.rds",package="mlmm")
- if (R.Version()$arch=="x86_64") fp=system.file("chunks","mlmc_i64.rds",package="mlmm")
- mcfit=readRDS(fp)
+ pathdir=tempdir()
+ #if (R.Version()$arch=="i386") fp=system.file("chunks","mlmc_i32.rds",package="mlmm")
+ #if (R.Version()$arch=="x86_64") fp=system.file("chunks","mlmc_i64.rds",package="mlmm")
+ #mcfit=readRDS(fp)
  model1=mlmc(formula_completed=var1~var2,formula_missing=miss~var2,
              formula_censor=censor~1,formula_subject=~var2,pdata=pdata,response_censorlim=0.05,
              respond_dep_missing=TRUE,pidname="geneid",sidname="sid",pathname=pathdir,
-             iterno=10,chains=2,savefile=FALSE,usefit=TRUE,stanfit=mcfit)
+             iterno=10,chains=2,savefile=FALSE,usefit=TRUE)
  }
 system.time(testfun())
 }
@@ -112,12 +110,10 @@ formula_missing=miss~var2;
 formula_censor=censor~1;
 formula_subject=~treatment;
 response_censorlim=0.002;
-pathdir=getwd()
-fp=system.file("demo",package="mlmm")
-mcfit=readRDS(paste0(fp,"/demo/mlmc.rds"))
+pathdir=tempdir()
 model1=mlmc(formula_completed=var1~var2+treatment,formula_missing=miss~var2,
 formula_censor=censor~1,formula_subject=~treatment,pdata=pdata,response_censorlim=0.002,
 respond_dep_missing=TRUE,pidname="geneid",sidname="sid",pathname=pathdir,
-iterno=5,chains=1,savefile=FALSE,usefit=T,stanfit=mcfit)
+iterno=50,chains=2,savefile=FALSE,usefit=FALSE)
 }
 }

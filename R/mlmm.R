@@ -20,11 +20,10 @@
 #' @param adapt_delta_value  Adaptive delta value is an adaptation parameters for sampling algorithms,default is 0.85, value between 0-1.
 #' @param savefile A logical variable to indicate if the sampling files are to be saved.
 #' @param usefit A logical variable to indicate if the model use the existing fit.
-#' @param stanfit The name of the fitted stan model read from .rds fle.  
 #'
 #' @return Return of the function is the result fitted by stan(). It will have the summarized parameters from all chains and summary results for each chain.Plot() function will return the visualization of the mean and parameters.
 #' @examples
-#' \dontrun{
+#' #\dontrun{
 #' library(MASS)
 #' set.seed(150)
 #' var2=abs(rnorm(1000,0,1));treatment=c(rep(0,500),rep(1,500))
@@ -46,15 +45,15 @@
 #' formula_missing=miss~var2
 #' formula_censor=censor~1
 #' formula_subject=~treatment
-#' pathdir=getwd()
+#' pathdir=tempdir()
 #'
 #' model3=mlmm(formula_completed=var1~var2+treatment,formula_missing=miss~var2,
 #' formula_subject=~treatment,pdata=pdata,respond_dep_missing=TRUE,
-#' pidname="geneid",sidname="sid",pathname=pathdir,iterno=5,chains=1,savefile=FALSE)
-#' }
+#' pidname="geneid",sidname="sid",pathname=pathdir,iterno=10,chains=2,usefit=TRUE,savefile=FALSE)
+#' #}
 #' @export
 
-mlmm=function(formula_completed,formula_missing,formula_subject,pdata,respond_dep_missing=TRUE,pidname,sidname,iterno=100,chains=3,pathname,thin=1,seed=125,algorithm="NUTS",warmup=floor(iterno/2),adapt_delta_value=0.85,savefile=TRUE,usefit=T,stanfit)
+mlmm=function(formula_completed,formula_missing,formula_subject,pdata,respond_dep_missing=TRUE,pidname,sidname,iterno=100,chains=3,pathname,thin=1,seed=125,algorithm="NUTS",warmup=floor(iterno/2),adapt_delta_value=0.85,savefile=TRUE,usefit=TRUE)
 { 
   current.na.action = options('na.action')
   options(na.action='na.pass')
@@ -120,8 +119,10 @@ mlmm=function(formula_completed,formula_missing,formula_subject,pdata,respond_de
   
   initvalue1=function () {setinitvalues(npred=npred,np=np,npred_miss=npred_miss,npred_sub=npred_sub,nmiss=nmiss,nsid=nsid)}
 
-  if (usefit==TRUE) fitmlmm=rstan::stan(fit=stanfit,data=prstan_data,iter=iterno,init=initvalue1,pars=parsstr,seed=seed,thin=thin,algorithm=algorithm,warmup=warmup,chains=chains,control=list(adapt_delta=adapt_delta_value),sample_file=paste(pathname,"samples",sep=""))
-    else            fitmlmm=rstan::stan(model_code=readstancode(modelname="mlmm"),data=prstan_data,iter=iterno,init=initvalue1,pars=parsstr,seed=seed,thin=thin,algorithm=algorithm,warmup=warmup,chains=chains,control=list(adapt_delta=adapt_delta_value),sample_file=paste(pathname,"samples",sep=""))
+  if (usefit==TRUE) {
+    stanfit <- stanmodels$mmlm_code
+    fitmlmm=rstan::sampling(stanfit,data=prstan_data,iter=iterno,pars=parsstr,seed=seed,thin=thin,algorithm=algorithm,warmup=warmup,chains=chains,control=list(adapt_delta=adapt_delta_value),sample_file=paste(pathname,"samples",sep=""))
+  }    else fitmlmm=rstan::stan(model_code=readstancode(modelname="mlmm"),data=prstan_data,iter=iterno,init=initvalue1,pars=parsstr,seed=seed,thin=thin,algorithm=algorithm,warmup=warmup,chains=chains,control=list(adapt_delta=adapt_delta_value),sample_file=paste(pathname,"samples",sep=""))
   print(fitmlmm)
   if (savefile==TRUE) utils::write.csv(as.array(fitmlmm),file=paste(pathname,"outsummary.csv",sep=""),row.names=TRUE)
   return(fitmlmm)

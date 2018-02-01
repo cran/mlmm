@@ -22,7 +22,6 @@
 #' @param adapt_delta_value  Adaptive delta value is an adaptation parameters for sampling algorithms,default is 0.85, value between 0-1.
 #' @param savefile A logical variable to indicate if the sampling files are to be saved.
 #' @param usefit A logical variable to indicate if the model use the existing fit.
-#' @param stanfit The name of the fitted stan model read from .rds fle.  
 #'
 #'
 #' @return Return of the function is the result fitted by stan. It will have the summarized parameters from all chains and summary results for each chain.
@@ -45,14 +44,14 @@
 #'  for ( i in 1:50) {if (miss[i]==1) var1[i]=NA;
 #'  if (censor[i]==1) var1[i]=0.05}
 #'  pdata=data.frame(var1,var2,miss,censor,geneid,sid)
-#'  pathdir=getwd()
-#'  if (R.Version()$arch=="i386") fp=system.file("chunks","mlmc_i32.rds",package="mlmm")
-#'  if (R.Version()$arch=="x86_64") fp=system.file("chunks","mlmc_i64.rds",package="mlmm")
-#'  mcfit=readRDS(fp)
+#'  pathdir=tempdir()
+#'  #if (R.Version()$arch=="i386") fp=system.file("chunks","mlmc_i32.rds",package="mlmm")
+#'  #if (R.Version()$arch=="x86_64") fp=system.file("chunks","mlmc_i64.rds",package="mlmm")
+#'  #mcfit=readRDS(fp)
 #'  model1=mlmc(formula_completed=var1~var2,formula_missing=miss~var2,
 #'              formula_censor=censor~1,formula_subject=~var2,pdata=pdata,response_censorlim=0.05,
 #'              respond_dep_missing=TRUE,pidname="geneid",sidname="sid",pathname=pathdir,
-#'              iterno=10,chains=2,savefile=FALSE,usefit=TRUE,stanfit=mcfit)
+#'              iterno=10,chains=2,savefile=FALSE,usefit=TRUE)
 #'  }
 #' system.time(testfun())
 #' }
@@ -81,18 +80,16 @@
 #' formula_censor=censor~1;
 #' formula_subject=~treatment;
 #' response_censorlim=0.002;
-#' pathdir=getwd()
-#' fp=system.file("demo",package="mlmm")
-#' mcfit=readRDS(paste0(fp,"/demo/mlmc.rds"))
+#' pathdir=tempdir()
 #' model1=mlmc(formula_completed=var1~var2+treatment,formula_missing=miss~var2,
 #' formula_censor=censor~1,formula_subject=~treatment,pdata=pdata,response_censorlim=0.002,
 #' respond_dep_missing=TRUE,pidname="geneid",sidname="sid",pathname=pathdir,
-#' iterno=5,chains=1,savefile=FALSE,usefit=T,stanfit=mcfit)
+#' iterno=50,chains=2,savefile=FALSE,usefit=FALSE)
 #' }
 #' @export
 
-mlmc=function(formula_completed,formula_missing,formula_censor=NULL,formula_subject,pdata,respond_dep_missing=TRUE,response_censorlim=NULL,pidname,sidname,iterno=100,chains=3,pathname,thin=1,seed=125,algorithm="NUTS",warmup=floor(iterno/2),adapt_delta_value=0.85,savefile=TRUE,usefit=T,stanfit)
-{ #set_cppo(mode="fast")
+mlmc=function(formula_completed,formula_missing,formula_censor=NULL,formula_subject,pdata,respond_dep_missing=TRUE,response_censorlim=NULL,pidname,sidname,iterno=100,chains=3,pathname,thin=1,seed=125,algorithm="NUTS",warmup=floor(iterno/2),adapt_delta_value=0.85,savefile=TRUE,usefit=TRUE)
+{
   current.na.action=options('na.action')
   options(na.action='na.pass')
   t=stats::terms(formula_completed)
@@ -112,7 +109,7 @@ mlmc=function(formula_completed,formula_missing,formula_censor=NULL,formula_subj
   if (!is.null(response_censorlim)) censor_lim=response_censorlim
 
   y_all=stats::model.response(mf)
-  #detect errors for censor and missing
+  #unit test detect errors for censor and missing
   checkt=table(missing,censor)
   if (checkt[4]>0) stop("responses have overlapped definition in censor and missing");
 
@@ -188,8 +185,10 @@ mlmc=function(formula_completed,formula_missing,formula_censor=NULL,formula_subj
   if (respond_dep==1) parsstr=c("U","beta2","alpha","alpha_response") else parsstr=c("U","beta2","alpha")
  
   initvalue1=function () {setinitvalues(npred=npred,np=np,npred_miss=npred_miss,npred_sub=npred_sub,nmiss=nmiss,nsid=nsid)}
-  if (usefit==TRUE) fitmlmc=rstan::stan(fit=stanfit,data=prstan_data,iter=iterno,init=initvalue1,pars=parsstr,seed=seed,thin=thin,algorithm=algorithm,warmup=warmup,chains=chains,control=list(adapt_delta=adapt_delta_value),sample_file=paste(pathname,"samples",sep=""))
-  else  fitmlmc=rstan::stan(model_code=readstancode(modelname="mlmc"),data=prstan_data,iter=iterno,init=initvalue1,pars=parsstr,seed=seed,thin=thin,algorithm=algorithm,warmup=warmup,chains=chains,control=list(adapt_delta=adapt_delta_value),sample_file=paste(pathname,"samples",sep=""),save_dso=TRUE)
+  if (usefit==TRUE) 
+     {  stanfit=stanmodels$mlmc_code
+	  fitmlmc=rstan::sampling(stanfit,data=prstan_data,iter=iterno,init=initvalue1,pars=parsstr,seed=seed,thin=thin,algorithm=algorithm,warmup=warmup,chains=chains,control=list(adapt_delta=adapt_delta_value),sample_file=paste(pathname,"samples",sep=""))
+	  }  else  fitmlmc=rstan::stan(model_code=readstancode(modelname="mlmc"),data=prstan_data,iter=iterno,init=initvalue1,pars=parsstr,seed=seed,thin=thin,algorithm=algorithm,warmup=warmup,chains=chains,control=list(adapt_delta=adapt_delta_value),sample_file=paste(pathname,"samples",sep=""),save_dso=TRUE)
   
   print(fitmlmc)
   if (savefile==TRUE) utils::write.csv(as.array(fitmlmc),file=paste(pathname,"outsummary.csv",sep=""),row.names=TRUE)
